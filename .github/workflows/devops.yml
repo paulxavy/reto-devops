@@ -1,0 +1,90 @@
+name: DevOps CI/CD pipeline
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'         
+  workflow_dispatch:  
+
+env:
+  PROJECT_ID: devops-reto-1
+  CLUSTER_NAME: devops-cluster
+  REGION: us-central1
+  IMAGE_NAME: devops
+  REGISTRY: ghcr.io/${{ github.actor }}
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: verificar codigo
+        uses: actions/checkout@v4
+
+      - name: Configuracion Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt
+          pip install pytest flake8 bandit
+
+      - name: Analisis de codigo estatico
+        run: |
+          flake8 app tests
+          bandit -r app -ll
+
+      - name: Correr pruebas
+        run: pytest -v --maxfail=1 --disable-warnings
+
+      - name: Poner un tag a la iamgen
+        id: vars
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            echo "IMAGE_TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          fi
+          echo "Using image tag: $IMAGE_TAG"
+
+      - name: Logearse a Github 
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Build and push Docker image
+        run: |
+          docker build -t $REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
+          docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+          docker tag $REGISTRY/$IMAGE_NAME:$IMAGE_TAG $REGISTRY/$IMAGE_NAME:latest
+          docker push $REGISTRY/$IMAGE_NAME:latest
+
+  deploy:
+    needs: build-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verificacion de codigo
+        uses: actions/checkout@v4
+
+      - name: Configuracion Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+
+      - name: Configuracion kubectl
+        run: |
+          gcloud container clusters get-credentials $CLUSTER_NAME --region $REGION --project $PROJECT_ID
+
+      - name: Deploy a GKE 
+        run: |
+          kubectl set image deployment/devops-api devops-api=$REGISTRY/$IMAGE_NAME:${{ env.IMAGE_TAG }}
+          kubectl rollout status deployment/devops-api

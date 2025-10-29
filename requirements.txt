@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pydantic
+pyjwt
+pytest
+pytest-cov
+httpx
+flake8
+python-dotenv
