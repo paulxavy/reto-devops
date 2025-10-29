@@ -14,11 +14,31 @@ env:
   REGISTRY: ghcr.io/${{ github.actor }}
 
 jobs:
-  build-test:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - name: Verificar código
+        uses: actions/checkout@v4
+
+      - name: Logearse a GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Build y Push de Docker (latest)
+        run: |
+          docker build -t $REGISTRY/$IMAGE_NAME:latest .
+          docker push $REGISTRY/$IMAGE_NAME:latest
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout del código
         uses: actions/checkout@v4
 
       - name: Configuración de Python
@@ -39,21 +59,9 @@ jobs:
       - name: Ejecutar pruebas
         run: pytest -v --maxfail=1 --disable-warnings || true
 
-      - name: Logearse a GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
-
-      - name: Build y Push de Docker (latest)
-        run: |
-          docker build -t $REGISTRY/$IMAGE_NAME:latest .
-          docker push $REGISTRY/$IMAGE_NAME:latest
-
   deploy:
-    needs: build-test
     runs-on: ubuntu-latest
+    needs: test
 
     steps:
       - name: Checkout del código
@@ -78,6 +86,6 @@ jobs:
 
       - name: Desplegar a GKE (imagen latest)
         run: |
-          echo "Actualizacion de imagen a $REGISTRY/$IMAGE_NAME:latest"
+          echo "Actualizando imagen a $REGISTRY/$IMAGE_NAME:latest"
           kubectl set image deployment/devops-api devops-api=$REGISTRY/$IMAGE_NAME:latest
           kubectl rollout status deployment/devops-api --timeout=300s
