@@ -41,7 +41,7 @@ jobs:
       - name: Correr pruebas
         run: pytest -v --maxfail=1 --disable-warnings
 
-      - name: Poner un tag a la iamgen
+      - name: Poner un tag a la imagen
         id: vars
         run: |
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
