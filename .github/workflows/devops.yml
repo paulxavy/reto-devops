@@ -92,5 +92,6 @@ jobs:
           gcloud container clusters get-credentials $CLUSTER_NAME --region $REGION --project $PROJECT_ID
       - name: Deploy a GKE 
         run: |
+          echo "Updating image to $REGISTRY/$IMAGE_NAME:${{ env.IMAGE_TAG }}"
           kubectl set image deployment/devops-api devops-api=$REGISTRY/$IMAGE_NAME:${{ env.IMAGE_TAG }}
           kubectl rollout status deployment/devops-api
