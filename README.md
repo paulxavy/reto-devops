@@ -14,16 +14,39 @@ Cualquier método distinto a POST sobre `/DevOps` responde `ERROR`.
 
 ## Estructura del proyecto
 ```
-app/
-  main.py
-  schemas.py
-  config.py
-gen_jwt.py
-requirements.txt
-Dockerfile
-tests/
-README.md
-.env.example
+.
+├── .github/
+│   └── workflows/
+│       └── devops.yml               
+│
+├── app/
+│   ├── __init__.py
+│   ├── config.py                    
+│   ├── main.py                      
+│   └── schemas.py                   
+│
+├── infra/
+│   ├── kubernetes/
+│   │   ├── deployment.yaml          
+│   │   └── service.yaml             
+│   └── terraform/
+│       ├── main.tf                  
+│       ├── outputs.tf               
+│       ├── provider.tf              
+│       ├── terraform.tfvars        
+│       └── variables.tf             
+│
+├── tests/
+│   └── test_app.py                  
+│
+├── .dockerignore
+├── .env.example                     
+├── .flake8                          
+├── Dockerfile                       
+├── gen_jwt.py                       
+├── requirements.txt                 
+└── README.md                        
+
 ```
 
 ## Requisitos
